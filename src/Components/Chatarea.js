@@ -31,7 +31,7 @@ function Chatarea() {
     const { refresh, setRefresh } = useContext(myContext);
     const [loaded, setLoaded] = useState(false);
     const [socketConnectionStatus, setSocketConnectionStatus] = useState(false);
-
+    
     const sendMessage = () => {
         var data = null;
         const config = {
@@ -80,6 +80,10 @@ function Chatarea() {
         });
     }, [allMessages, allMessagesCopy]);
 
+
+   
+    
+
     // Fetch chats
     useEffect(() => {
         const config = {
@@ -91,7 +95,7 @@ function Chatarea() {
         axios
             .get(`http://localhost:8080/message/${chat_id}`, config)
             .then(({ data }) => {
-                console.log("API Response:", data); // Log the API response here
+               // console.log("API Response:", data); // Log the API response here
                 setAllMessages(data);
                 setLoaded(true);
                 socket.emit("join chat", chat_id);
@@ -101,16 +105,9 @@ function Chatarea() {
             });
         setAllMessagesCopy(allMessages);
     }, [refresh, chat_id, userData.data.token, allMessages]);
-
-    // Scroll to the bottom whenever new messages arrive
-    useEffect(() => {
-        console.log("Updating scroll...");
-        if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-            console.log("Scrolled to bottom");
-        }
-    }, [allMessages]);
-
+    // useEffect(() => {
+    //    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // }, [allMessages]);
     if (!loaded) {
         return (
             <div
@@ -202,3 +199,5 @@ function Chatarea() {
 }
 
 export default Chatarea;
+
+

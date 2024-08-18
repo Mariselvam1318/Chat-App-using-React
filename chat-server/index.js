@@ -51,14 +51,15 @@ const io = require("socket.io")(server,{
 });
 
 io.on("connection",(socket)=>{
-
+    console.log("Socket connected")
     socket.on("setup",(user)=>{
         socket.join(user.data._id);
+        // console.log("Joined user:",user.data._id);
         socket.emit("connected");
     });
     socket.on("join chat",(room)=>{
         socket.join(room);
-
+        // console.log("Joined room:",room);
     });
     socket.on("new message",(newMessageStatus)=>{
         var chat = newMessageStatus.chat;

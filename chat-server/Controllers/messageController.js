@@ -6,7 +6,7 @@ const Chat = require("../modals/chatModel");
 const allMessages = expressAsyncHandler(async (req, res) => {
   try {
     const messages = await Message.find({ chat: req.params.chatId })
-      .sort({ createdAt: 1 }) // Sort by 'createdAt' in ascending order
+      // .sort({ createdAt: 1 }) // Sort by 'createdAt' in ascending order
       .populate("sender", "name email")
       .populate("receiver")
       .populate("chat")

@@ -14,6 +14,13 @@
     border-radius: 20px;
     justify-content: center; 
 }
+.message-container {
+    height: 80vh; /* or any appropriate height */
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
 .slidebar-container{
 
     flex: 0.3;

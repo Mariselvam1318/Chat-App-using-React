@@ -12,6 +12,7 @@ import { myContext } from "./MainContainer";
 import { io } from "socket.io-client";
 
 const ENDPOINT = "http://localhost:8080";
+var socket;
 
 function Chatarea() {
     const [messageContent, setMessageContent] = useState("");
@@ -19,60 +20,67 @@ function Chatarea() {
     const dyParams = useParams();
     const [chat_id, chat_user] = dyParams._id.split("&");
     const localStorageData = localStorage.getItem("userData");
-    
     if (localStorageData) {
-      const userData = JSON.parse(localStorageData);
-      sessionStorage.setItem("userData", JSON.stringify(userData));
+        const userData = JSON.parse(localStorageData);
+        sessionStorage.setItem("userData", JSON.stringify(userData));
     }
     const storedUserData = sessionStorage.getItem("userData");
     const userData = JSON.parse(storedUserData);
-
     const [allMessages, setAllMessages] = useState([]);
-    const { refresh } = useContext(myContext); // Only using refresh now
+    const [allMessagesCopy, setAllMessagesCopy] = useState([]);
+    const { refresh, setRefresh } = useContext(myContext);
     const [loaded, setLoaded] = useState(false);
+    const [socketConnectionStatus, setSocketConnectionStatus] = useState(false);
 
     const sendMessage = () => {
+        var data = null;
         const config = {
             headers: {
                 Authorization: `Bearer ${userData.data.token}`,
             },
         };
 
-        const newMessage = {
-            content: messageContent,
-            chatId: chat_id,
-            sender: userData.data, // assuming sender info needs to be sent
-        };
-
         axios
-            .post("http://localhost:8080/message/", newMessage, config)
-            .then(() => {
-                console.log("Message sent successfully");
-                setAllMessages(prevMessages => [...prevMessages, newMessage]); // Update state with new message
-                setMessageContent(""); // Clear input after sending
+            .post("http://localhost:8080/message/", {
+                content: messageContent,
+                chatId: chat_id,
+            },
+                config)
+            .then(({ response }) => {
+                data = response;
+                console.log("Message sent successfully", data);
+                setRefresh(!refresh); // Trigger refresh to fetch updated messages
             })
             .catch(error => {
                 console.error("Error sending message:", error);
             });
+        socket.emit("newMessage", data);
     };
 
+    // Socket connection
     useEffect(() => {
-        const socket = io(ENDPOINT);
+        socket = io(ENDPOINT);
         socket.emit("setup", userData);
-
-        socket.on("connected", () => {
-            console.log("Socket connected");
+        socket.on("connection", () => {
+            setSocketConnectionStatus(!socketConnectionStatus);
         });
-
-        socket.on("message Received", (newMessage) => {
-            setAllMessages(prevMessages => [...prevMessages, newMessage]);
-        });
-
         return () => {
-            socket.disconnect(); // Cleanup socket connection
+            socket.disconnect();
         };
-    }, [userData]);
+    }, []);
 
+    // New message received
+    useEffect(() => {
+        socket.on("message Received", (newMessage) => {
+            if (!allMessagesCopy || allMessagesCopy._id !== newMessage._id) {
+                setAllMessages([...allMessages, newMessage]);
+            } else {
+                setAllMessages([...allMessages, newMessage]);
+            }
+        });
+    }, [allMessages, allMessagesCopy]);
+
+    // Fetch chats
     useEffect(() => {
         const config = {
             headers: {
@@ -84,17 +92,22 @@ function Chatarea() {
             .get(`http://localhost:8080/message/${chat_id}`, config)
             .then(({ data }) => {
                 console.log("API Response:", data); // Log the API response here
-                setAllMessages([...data]);
+                setAllMessages(data);
                 setLoaded(true);
+                socket.emit("join chat", chat_id);
             })
             .catch(error => {
                 console.error("Error fetching messages:", error);
             });
-    }, [refresh, chat_id, userData.data.token]);
+        setAllMessagesCopy(allMessages);
+    }, [refresh, chat_id, userData.data.token, allMessages]);
 
+    // Scroll to the bottom whenever new messages arrive
     useEffect(() => {
+        console.log("Updating scroll...");
         if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+            console.log("Scrolled to bottom");
         }
     }, [allMessages]);
 
@@ -147,16 +160,16 @@ function Chatarea() {
                         const sender = message.sender;
                         const self_id = userData.data._id;
                         return (
-                          <React.Fragment key={index}>
-                            {sender && sender._id === self_id ? (
-                              <MessageSelf props={message} />
-                            ) : (
-                              <MessageOthers props={message} />
-                            )}
-                          </React.Fragment>
+                            <React.Fragment key={index}>
+                                {sender && sender._id === self_id ? (
+                                    <MessageSelf props={message} />
+                                ) : (
+                                    <MessageOthers props={message} />
+                                )}
+                            </React.Fragment>
                         );
                     })}
-                    <div ref={messagesEndRef} className="BOTTOM" />
+                    <div ref={messagesEndRef} /> {/* Ensure this is at the end */}
                 </div>
                 <div className='text-input'>
                     <input
@@ -169,6 +182,7 @@ function Chatarea() {
                         onKeyDown={(event) => {
                             if (event.code === "Enter") {
                                 sendMessage();
+                                setMessageContent("");
                             }
                         }}
                     />
@@ -176,6 +190,7 @@ function Chatarea() {
                         className="icon"
                         onClick={() => {
                             sendMessage();
+                            setMessageContent("");
                         }}
                     >
                         <SendIcon />
@@ -187,14 +202,3 @@ function Chatarea() {
 }
 
 export default Chatarea;
-
-
-
-
-
-
-
-
-
-
-
